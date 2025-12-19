@@ -1,4 +1,4 @@
-import { createError } from 'h3'
+import { setResponseStatus } from 'h3'
 
 type PublicVerificationRequest = {
   orderId?: string | number
@@ -20,17 +20,13 @@ export default defineEventHandler(async (event) => {
   const apiKey = (body.apiKey || '').trim()
 
   if (!apiKey) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'Missing API key (provide x-api-key)',
-    })
+    setResponseStatus(event, 400)
+    return { ok: false, status: 400, error: 'Missing API key (provide x-api-key)' }
   }
 
   if (!body.customerEmail || !body.customerName) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'customerEmail and customerName are required',
-    })
+    setResponseStatus(event, 400)
+    return { ok: false, status: 400, error: 'customerEmail and customerName are required' }
   }
 
   const { apiKey: _removed, environment, ...payload } = body
@@ -54,20 +50,53 @@ export default defineEventHandler(async (event) => {
       : 'https://platform.oneguard.app/api/public/v1/verification'
 
   try {
-    const result = await $fetch(targetUrl, {
+    const response = await $fetch.raw(targetUrl, {
       method: 'POST',
       body: normalizedPayload,
       headers: {
         'x-api-key': apiKey,
       },
+      responseType: 'text',
+      throw: false,
     })
 
-    return result
+    const contentType = response.headers.get('content-type') || ''
+    const raw = (response as any)._data ?? (response as any).data ?? ''
+
+    let parsed: unknown = null
+    try {
+      parsed = raw ? JSON.parse(raw as string) : null
+    } catch {
+      parsed = null
+    }
+
+    const isHtml = typeof raw === 'string' && raw.trim().startsWith('<')
+
+    const resultPayload = {
+      ok: response.status >= 200 && response.status < 300,
+      status: response.status,
+      statusText: response.statusText,
+      contentType,
+      headers: Object.fromEntries(response.headers.entries()),
+      data: isHtml ? { note: 'text/html response', body: raw } : parsed ?? raw,
+      raw,
+    }
+
+    setResponseStatus(event, response.status)
+    return resultPayload
   } catch (error: any) {
-    throw createError({
-      statusCode: error?.status || 500,
-      statusMessage: 'Verification request failed',
-      data: error?.data ?? error?.message ?? error,
-    })
+    const status = error?.status || 500
+    const detailRaw = error?.data ?? error?.message ?? error
+    const detail =
+      typeof detailRaw === 'string' && detailRaw.trim().startsWith('<')
+        ? { note: 'text/html error response', body: detailRaw }
+        : detailRaw
+    setResponseStatus(event, status)
+    return {
+      ok: false,
+      status,
+      statusText: 'Verification request failed',
+      error: detail,
+    }
   }
 })

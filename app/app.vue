@@ -124,6 +124,19 @@
 
     <section class="card response">
       <div class="card-header">
+        <h2>Request preview</h2>
+        <p class="muted">Headers and body that will be sent to <code>{{ targetUrl }}</code>.</p>
+      </div>
+      <div class="output">
+        <p class="muted label">Headers</p>
+        <pre>{{ formattedHeaders }}</pre>
+        <p class="muted label">Body</p>
+        <pre>{{ formattedRequestBody }}</pre>
+      </div>
+    </section>
+
+    <section class="card response">
+      <div class="card-header">
         <h2>Response</h2>
         <p class="muted">
           Raw response from <code>{{ targetUrl }}</code>.
@@ -163,18 +176,18 @@ type PublicVerificationRequest = {
 type FormModel = PublicVerificationRequest & { apiKey: string; environment: 'prod' | 'staging' }
 
 const initialForm: FormModel = {
-  orderId: '',
-  orderName: '',
-  orderTimestamp: '',
-  customerEmail: '',
-  customerName: '',
-  customerAddress: '',
-  orderPublicUrl: '',
-  customerLocale: '',
+  orderId: 'ORD-1001',
+  orderName: 'Winter bundle',
+  orderTimestamp: '2024-12-20T10:00:00Z',
+  customerEmail: 'ava@example.com',
+  customerName: 'Ava Oneguard',
+  customerAddress: '123 Main Street, Springfield',
+  orderPublicUrl: 'https://example.com/order/ORD-1001',
+  customerLocale: 'en-US',
   sendInvite: false,
   testMode: true,
-  apiKey: '',
-  environment: 'prod',
+  apiKey: 'sk_test_example_key',
+  environment: 'staging',
 }
 
 const form = reactive<FormModel>({ ...initialForm })
@@ -186,6 +199,12 @@ const formattedResponse = computed(() =>
   response.value ? JSON.stringify(response.value, null, 2) : null
 )
 const formattedError = computed(() => (error.value ? JSON.stringify(error.value, null, 2) : null))
+const requestHeaders = computed(() => ({
+  'x-api-key': form.apiKey.trim() || '(missing)',
+}))
+const formattedHeaders = computed(() => JSON.stringify(requestHeaders.value, null, 2))
+const requestBody = computed(() => buildPayload())
+const formattedRequestBody = computed(() => JSON.stringify(requestBody.value, null, 2))
 const targetUrl = computed(() =>
   form.environment === 'staging'
     ? 'https://platform.staging.oneguard.app/api/public/v1/verification'
@@ -454,6 +473,10 @@ textarea:focus {
   margin-top: 12px;
   display: grid;
   gap: 10px;
+}
+
+.label {
+  font-size: 13px;
 }
 
 pre {
