@@ -74,9 +74,29 @@
       <section class="card options">
         <div class="card-header">
           <h2>Options</h2>
-          <p class="muted">Toggle invites and test mode.</p>
+          <p class="muted">Toggle invites, test mode, and target environment.</p>
         </div>
         <div class="switches">
+          <div class="pill-group" role="group" aria-label="Environment">
+            <button
+              type="button"
+              class="pill"
+              :class="{ active: form.environment === 'prod' }"
+              @click="form.environment = 'prod'"
+            >
+              Prod
+              <span class="pill-sub">platform.oneguard.app</span>
+            </button>
+            <button
+              type="button"
+              class="pill"
+              :class="{ active: form.environment === 'staging' }"
+              @click="form.environment = 'staging'"
+            >
+              Staging
+              <span class="pill-sub">platform.staging.oneguard.app</span>
+            </button>
+          </div>
           <label class="switch">
             <input v-model="form.sendInvite" type="checkbox" />
             <span>Send invite</span>
@@ -106,7 +126,7 @@
       <div class="card-header">
         <h2>Response</h2>
         <p class="muted">
-          Raw response from <code>https://platform.oneguard.app/api/public/v1/verification</code>.
+          Raw response from <code>{{ targetUrl }}</code>.
         </p>
       </div>
       <div class="status-line">
@@ -140,7 +160,7 @@ type PublicVerificationRequest = {
   testMode?: boolean
 }
 
-type FormModel = PublicVerificationRequest & { apiKey: string }
+type FormModel = PublicVerificationRequest & { apiKey: string; environment: 'prod' | 'staging' }
 
 const initialForm: FormModel = {
   orderId: '',
@@ -154,6 +174,7 @@ const initialForm: FormModel = {
   sendInvite: false,
   testMode: true,
   apiKey: '',
+  environment: 'prod',
 }
 
 const form = reactive<FormModel>({ ...initialForm })
@@ -165,6 +186,11 @@ const formattedResponse = computed(() =>
   response.value ? JSON.stringify(response.value, null, 2) : null
 )
 const formattedError = computed(() => (error.value ? JSON.stringify(error.value, null, 2) : null))
+const targetUrl = computed(() =>
+  form.environment === 'staging'
+    ? 'https://platform.staging.oneguard.app/api/public/v1/verification'
+    : 'https://platform.oneguard.app/api/public/v1/verification'
+)
 const statusMessage = computed(() => {
   if (loading.value) return 'Sending request…'
   if (error.value) return 'Request failed'
@@ -215,7 +241,7 @@ const sendRequest = async () => {
   try {
     response.value = await $fetch('/api/verify', {
       method: 'POST',
-      body: { apiKey: form.apiKey.trim(), ...buildPayload() },
+      body: { apiKey: form.apiKey.trim(), environment: form.environment, ...buildPayload() },
     })
   } catch (err: any) {
     error.value = err?.data ?? err?.message ?? err
@@ -339,6 +365,41 @@ textarea:focus {
   gap: 12px;
   flex-wrap: wrap;
   margin-top: 12px;
+}
+
+.pill-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  flex: 1;
+}
+
+.pill {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+}
+
+.pill:hover {
+  transform: translateY(-1px);
+  border-color: #22d3ee;
+}
+
+.pill.active {
+  background: linear-gradient(130deg, rgba(34, 211, 238, 0.1), rgba(14, 165, 233, 0.08));
+  border-color: #22d3ee;
+}
+
+.pill-sub {
+  display: block;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .switch {

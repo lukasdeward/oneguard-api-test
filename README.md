@@ -16,7 +16,7 @@ npm run dev
 ```
 
 1. Fill in the request fields and required `customerName`, `customerEmail`, and your API key.
-2. Optional: toggle `testMode` or `sendInvite`.
+2. Optional: toggle `testMode`, `sendInvite`, and choose Prod vs Staging endpoint.
 3. Submit to proxy through `/api/verify` (Nuxt server route sets `x-api-key` and forwards to OneGuard).
 4. The raw response (or error) is shown in the Response panel.
 

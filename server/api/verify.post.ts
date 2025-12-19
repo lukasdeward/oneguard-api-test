@@ -13,7 +13,7 @@ type PublicVerificationRequest = {
   testMode?: boolean
 }
 
-type ForwardRequest = PublicVerificationRequest & { apiKey?: string }
+type ForwardRequest = PublicVerificationRequest & { apiKey?: string; environment?: 'prod' | 'staging' }
 
 export default defineEventHandler(async (event) => {
   const body = await readBody<ForwardRequest>(event)
@@ -33,7 +33,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  const { apiKey: _removed, ...payload } = body
+  const { apiKey: _removed, environment, ...payload } = body
   const normalizedPayload: PublicVerificationRequest = {
     ...payload,
     orderId: payload.orderId === '' ? undefined : payload.orderId,
@@ -48,8 +48,13 @@ export default defineEventHandler(async (event) => {
     testMode: payload.testMode ?? false,
   }
 
+  const targetUrl =
+    environment === 'staging'
+      ? 'https://platform.staging.oneguard.app/api/public/v1/verification'
+      : 'https://platform.oneguard.app/api/public/v1/verification'
+
   try {
-    const result = await $fetch('https://platform.oneguard.app/api/public/v1/verification', {
+    const result = await $fetch(targetUrl, {
       method: 'POST',
       body: normalizedPayload,
       headers: {
